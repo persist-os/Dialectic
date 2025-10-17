@@ -11,6 +11,12 @@ from typing import Dict, List
 from datetime import datetime
 from pathlib import Path
 
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from agents.models import AgentSpec, ContextAnalysis
 from config.llm_config import get_llm
 
@@ -32,7 +38,7 @@ class AIAgentGenerator:
         self.use_ai = use_ai
         self.llm = get_llm() if use_ai else None
     
-    async def generate_agents(self, context_analysis: Dict) -> List[AgentSpec]:
+    async def generate_agents(self, context_analysis: Dict):
         """
         Generate agents using LLM based on context analysis
         
@@ -40,16 +46,21 @@ class AIAgentGenerator:
             context_analysis: Output from ContextAnalyzer
         
         Returns:
-            List of AgentSpec objects
+            Tuple of (List of AgentSpec objects, Dict with LLM response data)
         """
         
         if self.use_ai and self.llm:
             return await self._generate_with_ai(context_analysis)
         else:
-            return await self._generate_fallback(context_analysis)
+            agents = await self._generate_fallback(context_analysis)
+            return agents, {
+                "prompt": "Fallback mode - using keyword-based generation",
+                "llm_response": "No LLM response (fallback mode)",
+                "system_prompt": "N/A"
+            }
     
-    async def _generate_with_ai(self, context: Dict) -> List[AgentSpec]:
-        """Generate agents using LLM"""
+    async def _generate_with_ai(self, context: Dict):
+        """Generate agents using LLM and return both agents and LLM response data"""
         
         # Build prompt for LLM
         prompt = self._build_agent_generation_prompt(context)
@@ -72,7 +83,7 @@ Be specific and context-aware. Only generate agents that are truly needed for th
 
         try:
             # Call LLM
-            response = await self.llm.generate(
+            response = self.llm.generate(
                 prompt=prompt,
                 system_prompt=system_prompt,
                 max_tokens=2000,
@@ -103,12 +114,27 @@ Be specific and context-aware. Only generate agents that are truly needed for th
                 )
                 agents.append(agent)
             
-            return sorted(agents, key=lambda x: (x.priority, -x.confidence))
+            # Return both agents and LLM response data
+            llm_data = {
+                "prompt": prompt,
+                "system_prompt": system_prompt,
+                "llm_response": response,
+                "parsed_data": data,
+                "agents_generated": len(agents)
+            }
+            
+            return sorted(agents, key=lambda x: (x.priority, -x.confidence)), llm_data
             
         except Exception as e:
             print(f"⚠️  AI agent generation failed: {e}")
             print(f"   Falling back to keyword-based generation")
-            return await self._generate_fallback(context)
+            agents = await self._generate_fallback(context)
+            return agents, {
+                "prompt": prompt,
+                "system_prompt": system_prompt,
+                "llm_response": f"Error: {str(e)}",
+                "error": str(e)
+            }
     
     def _build_agent_generation_prompt(self, context: Dict) -> str:
         """Build prompt for LLM"""
@@ -268,26 +294,42 @@ if __name__ == "__main__":
         ai_generator = AIAgentGenerator(use_ai=True)
         
         test_event = {
-            'files': ['src/auth/jwt.py', 'src/middleware/auth.py'],
-            'message': 'Add JWT authentication with secure token handling',
-            'errors': []
+            'files': [
+                'src/auth/jwt.py', 
+                'src/middleware/auth.py',
+                'src/api/user_endpoints.py',
+                'src/frontend/components/LoginForm.tsx',
+                'src/frontend/styles/auth.css',
+                'docs/api/authentication.md',
+                'tests/auth/test_jwt.py'
+            ],
+            'message': 'Implement complete user authentication system with JWT tokens, API endpoints, React frontend components, and comprehensive testing. This includes secure token handling, user registration/login, password hashing, CORS configuration, and API documentation updates.',
+            'errors': [
+                {'type': 'TypeError', 'count': 3},
+                {'type': 'AuthenticationError', 'count': 1}
+            ]
         }
         
         context = await analyzer.analyze_event(test_event)
-        agents = await ai_generator.generate_agents(context)
+        agents, llm_data = await ai_generator.generate_agents(context)
         
         print(f"   Generated {len(agents)} agents:")
         for agent in agents:
             print(f"      • {agent.agent_type}: {agent.context_reason}")
+        
+        print(f"   🧠 AI Generated: {llm_data.get('agents_generated', 0)} agents")
+        print(f"   📝 LLM Response: {llm_data.get('llm_response', 'N/A')[:100]}...")
         
         # Test fallback
         print("\n2️⃣ Testing FALLBACK (no AI):")
         fallback_generator = AIAgentGenerator(use_ai=False)
-        agents = await fallback_generator.generate_agents(context)
+        agents, llm_data = await fallback_generator.generate_agents(context)
         
         print(f"   Generated {len(agents)} agents:")
         for agent in agents:
             print(f"      • {agent.agent_type}: {agent.context_reason}")
+        
+        print(f"   Method: {llm_data.get('method', 'unknown')}")
     
     asyncio.run(test_ai_agent_generator())
 

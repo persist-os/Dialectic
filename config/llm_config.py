@@ -7,6 +7,16 @@ import os
 from typing import Dict, List, Optional
 from litellm import completion
 import json
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+    print(f"✅ Loaded .env from {env_path}")
+else:
+    print(f"⚠️  No .env file found at {env_path}")
 
 
 class LLMConfig:
@@ -17,7 +27,7 @@ class LLMConfig:
     
     def __init__(
         self,
-        model: str = "anthropic/claude-3-5-sonnet-20241022",
+        model: str = "gpt-4o-mini",  # Use OpenAI model by default
         api_key: Optional[str] = None,
         temperature: float = 0.7
     ):
@@ -39,7 +49,7 @@ class LLMConfig:
             elif model.startswith("gpt"):
                 os.environ["OPENAI_API_KEY"] = api_key
     
-    async def generate(
+    def generate(
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
@@ -77,7 +87,7 @@ class LLMConfig:
             kwargs["response_format"] = {"type": "json_object"}
         
         try:
-            response = await completion(**kwargs)
+            response = completion(**kwargs)
             return response.choices[0].message.content
         except Exception as e:
             print(f"⚠️  LLM call failed: {e}")
@@ -91,7 +101,19 @@ def get_llm() -> LLMConfig:
     """Get global LLM instance"""
     global _llm_instance
     if _llm_instance is None:
-        _llm_instance = LLMConfig()
+        # Check if API key is available
+        openai_key = os.getenv('OPENAI_API_KEY')
+        anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+        
+        if openai_key:
+            print(f"✅ Using OpenAI API key: {openai_key[:10]}...")
+            _llm_instance = LLMConfig(model="gpt-4o-mini")
+        elif anthropic_key:
+            print(f"✅ Using Anthropic API key: {anthropic_key[:10]}...")
+            _llm_instance = LLMConfig(model="anthropic/claude-3-5-sonnet-20241022")
+        else:
+            print("⚠️  No API key found in environment variables")
+            _llm_instance = LLMConfig()
     return _llm_instance
 
 

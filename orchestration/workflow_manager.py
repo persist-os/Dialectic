@@ -1,6 +1,7 @@
 """
 Workflow Manager for Dialectic Agent Coordination
 Manages agent workflows and coordinates between different components
+Uses ACTUAL AI-powered agent generation - NO HARDCODING!
 """
 import asyncio
 import json
@@ -8,9 +9,18 @@ import logging
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass
 import time
+import sys
+from pathlib import Path
+
+# Add parent directory for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from orchestration.stackai_client import StackAIClient, AgentWorkflow
 from streams.message_handler import MessageHandler, MessageType, Message
+from agents.dynamic_agent_generator import AIAgentGenerator
+from agents.context_analyzer import ContextAnalyzer
+from agents.documentation_updater import DocumentationUpdater
+from agents.learning_engine import LearningEngine
 
 logger = logging.getLogger(__name__)
 
@@ -35,48 +45,22 @@ class AgentCoordinationResult:
     error_message: Optional[str] = None
 
 class WorkflowManager:
-    """Manages agent workflows and coordinates between components"""
+    """Manages agent workflows and coordinates between components - AI-POWERED!"""
     
-    def __init__(self, stackai_client: StackAIClient, message_handler: MessageHandler):
+    def __init__(self, stackai_client: StackAIClient, message_handler: MessageHandler, use_ai: bool = True):
         self.stackai_client = stackai_client
         self.message_handler = message_handler
         self.active_workflows: Dict[str, str] = {}  # context_id -> workflow_id
-        self.agent_templates: Dict[str, Dict[str, Any]] = {}
-        self._setup_agent_templates()
+        
+        # AI-POWERED COMPONENTS - NO TEMPLATES!
+        self.ai_generator = AIAgentGenerator(use_ai=use_ai)
+        self.context_analyzer = ContextAnalyzer()
+        self.documentation_updater = DocumentationUpdater('.cursor/')
+        self.learning_engine = LearningEngine()
+        
         self._register_message_handlers()
-    
-    def _setup_agent_templates(self):
-        """Setup predefined agent templates"""
-        self.agent_templates = {
-            "security_specialist": {
-                "type": "security_specialist",
-                "name": "Security Specialist",
-                "description": "Analyzes code for security vulnerabilities and best practices",
-                "capabilities": ["vulnerability_detection", "security_patterns", "auth_analysis"],
-                "prompt_template": "As a security specialist, analyze the following code changes for security implications: {context}"
-            },
-            "mvp_strategist": {
-                "type": "mvp_strategist", 
-                "name": "MVP Strategist",
-                "description": "Focuses on MVP requirements and user value",
-                "capabilities": ["mvp_analysis", "user_value_assessment", "feature_prioritization"],
-                "prompt_template": "As an MVP strategist, evaluate these changes for MVP impact and user value: {context}"
-            },
-            "performance_expert": {
-                "type": "performance_expert",
-                "name": "Performance Expert", 
-                "description": "Analyzes performance implications and optimization opportunities",
-                "capabilities": ["performance_analysis", "optimization_recommendations", "scalability_assessment"],
-                "prompt_template": "As a performance expert, analyze these changes for performance implications: {context}"
-            },
-            "documentation_agent": {
-                "type": "documentation_agent",
-                "name": "Documentation Agent",
-                "description": "Updates documentation based on code changes and analysis",
-                "capabilities": ["doc_generation", "pattern_documentation", "update_cursor_folder"],
-                "prompt_template": "As a documentation agent, update documentation based on: {context}"
-            }
-        }
+        
+        logger.info("WorkflowManager initialized with AI-powered agent generation")
     
     def _register_message_handlers(self):
         """Register message handlers for different message types"""
@@ -138,20 +122,53 @@ class WorkflowManager:
             logger.error(f"Failed to handle workflow trigger: {e}")
     
     async def coordinate_agents(self, context: AgentContext) -> AgentCoordinationResult:
-        """Coordinate agents based on context"""
+        """Coordinate agents using ACTUAL AI - NO HARDCODING!"""
         try:
-            # Determine which agents to generate based on context
-            agents_to_generate = self._determine_agents_needed(context)
+            # Step 1: AI-POWERED CONTEXT ANALYSIS
+            logger.info(f"🧠 AI analyzing context: {context.focus_area}")
             
-            # Generate agents
+            # Build event data for context analyzer
+            event_data = {
+                'files': context.code_changes,
+                'message': f"{context.focus_area} focus: {', '.join(context.code_changes)}",
+                'errors': context.metadata.get('errors', []) if context.metadata else []
+            }
+            
+            # AI analyzes the context
+            context_analysis = await self.context_analyzer.analyze_event(event_data)
+            logger.info(f"   📊 Context analysis complete: {self.context_analyzer.get_context_summary(context_analysis)}")
+            
+            # Step 2: AI-POWERED AGENT GENERATION
+            logger.info(f"🤖 AI generating specialized agents...")
+            agents_specs, llm_data = await self.ai_generator.generate_agents(context_analysis)
+            
+            logger.info(f"   ✨ AI generated {len(agents_specs)} agents")
+            logger.info(f"   🧠 LLM reasoning: {llm_data.get('llm_response', 'N/A')[:100]}...")
+            
+            # Convert AgentSpec objects to dict format for workflow
             agents = []
-            for agent_type in agents_to_generate:
-                agent = await self._generate_agent(agent_type, context)
-                agents.append(agent)
+            for agent_spec in agents_specs:
+                agent_dict = {
+                    "id": agent_spec.agent_id,
+                    "type": agent_spec.agent_type,
+                    "name": agent_spec.agent_type.replace('_', ' ').title(),
+                    "description": agent_spec.context_reason,
+                    "capabilities": agent_spec.tags,
+                    "context": {
+                        "focus_area": agent_spec.focus_area,
+                        "urgency": context.urgency,
+                        "code_changes": context.code_changes,
+                        "confidence": agent_spec.confidence,
+                        "documentation_targets": agent_spec.documentation_targets
+                    },
+                    "generated_at": time.time(),
+                    "llm_generated": True
+                }
+                agents.append(agent_dict)
             
-            # Create workflow
+            # Step 3: Create workflow with AI-generated agents
             workflow_id = await self.stackai_client.create_agent_workflow(
-                agents, f"dialectic_context_{int(time.time())}"
+                agents, f"dialectic_ai_context_{int(time.time())}"
             )
             
             if not workflow_id:
@@ -165,26 +182,47 @@ class WorkflowManager:
                     error_message="Failed to create workflow"
                 )
             
-            # Execute workflow using the returned workflow_id
+            # Step 4: Execute workflow
             execution_id = await self.stackai_client.execute_workflow(
                 workflow_id, {
                     "code_changes": context.code_changes,
                     "file_context": context.file_context,
-                    "focus_area": context.focus_area
+                    "focus_area": context.focus_area,
+                    "ai_analysis": context_analysis,
+                    "llm_reasoning": llm_data
                 }
             )
             
-            # Generate documentation updates
-            documentation_updates = await self._generate_documentation_updates(
-                context, agents
+            # Step 5: AI-POWERED DOCUMENTATION UPDATES (ACTUAL GENERATION!)
+            logger.info(f"📚 AI generating documentation...")
+            documentation_updates = []
+            
+            for agent_spec in agents_specs:
+                updates, content_data = await self.documentation_updater.update_documentation(
+                    agent_spec, context_analysis
+                )
+                documentation_updates.extend(updates)
+                logger.info(f"   ✏️  {agent_spec.agent_type}: {len(updates)} files with AI-generated content")
+            
+            # Step 6: AI LEARNING
+            logger.info(f"🧠 AI learning from interaction...")
+            await self.learning_engine.learn_from_event(
+                event_data, agents_specs, 'success', documentation_updates
             )
             
-            # Generate learning events
-            learning_events = await self._generate_learning_events(context, agents)
+            learning_summary = self.learning_engine.get_learning_summary()
+            learning_events = [{
+                "event_type": "ai_learning",
+                "success_rate": learning_summary['success_rate'],
+                "patterns_learned": learning_summary['patterns_learned'],
+                "timestamp": time.time()
+            }]
             
             # Store active workflow
             context_id = f"{context.focus_area}_{int(time.time())}"
             self.active_workflows[context_id] = workflow_id
+            
+            logger.info(f"✅ AI coordination complete: {len(agents)} agents, {len(documentation_updates)} updates")
             
             return AgentCoordinationResult(
                 workflow_id=workflow_id,
@@ -196,7 +234,7 @@ class WorkflowManager:
             )
             
         except Exception as e:
-            logger.error(f"Failed to coordinate agents: {e}")
+            logger.error(f"❌ AI coordination failed: {e}", exc_info=True)
             return AgentCoordinationResult(
                 workflow_id="",
                 execution_id="",
@@ -207,125 +245,7 @@ class WorkflowManager:
                 error_message=str(e)
             )
     
-    def _determine_agents_needed(self, context: AgentContext) -> List[str]:
-        """Determine which agents are needed based on context"""
-        agents_needed = []
-        
-        # Always include documentation agent
-        agents_needed.append("documentation_agent")
-        
-        # Determine focus-specific agents
-        focus_area = context.focus_area.lower()
-        
-        if focus_area == "security" or any("auth" in change.lower() or "security" in change.lower() 
-                                         for change in context.code_changes):
-            agents_needed.append("security_specialist")
-        
-        if focus_area == "mvp" or any("prototype" in change.lower() or "feature" in change.lower()
-                                   for change in context.code_changes):
-            agents_needed.append("mvp_strategist")
-        
-        if focus_area == "performance" or any("optimize" in change.lower() or "performance" in change.lower()
-                                             for change in context.code_changes):
-            agents_needed.append("performance_expert")
-        
-        # If no specific focus, include all for general analysis
-        if focus_area == "general" or len(agents_needed) == 1:
-            agents_needed.extend(["security_specialist", "mvp_strategist", "performance_expert"])
-        
-        return list(set(agents_needed))  # Remove duplicates
-    
-    async def _generate_agent(self, agent_type: str, context: AgentContext) -> Dict[str, Any]:
-        """Generate an agent based on type and context"""
-        template = self.agent_templates.get(agent_type, {})
-        
-        agent = {
-            "id": f"{agent_type}_{int(time.time())}",
-            "type": agent_type,
-            "name": template.get("name", agent_type.title()),
-            "description": template.get("description", ""),
-            "capabilities": template.get("capabilities", []),
-            "context": {
-                "focus_area": context.focus_area,
-                "urgency": context.urgency,
-                "code_changes": context.code_changes,
-                "file_context": context.file_context
-            },
-            "generated_at": time.time()
-        }
-        
-        return agent
-    
-    async def _generate_documentation_updates(self, context: AgentContext, 
-                                           agents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Generate documentation updates based on context and agents"""
-        updates = []
-        
-        # Generate updates for each agent's analysis
-        for agent in agents:
-            agent_type = agent["type"]
-            
-            if agent_type == "security_specialist":
-                updates.append({
-                    "file": "security_patterns.md",
-                    "action": "update",
-                    "content": f"Security analysis for: {', '.join(context.code_changes)}",
-                    "agent_id": agent["id"]
-                })
-            
-            elif agent_type == "mvp_strategist":
-                updates.append({
-                    "file": "mvp_guidelines.md", 
-                    "action": "update",
-                    "content": f"MVP analysis for: {', '.join(context.code_changes)}",
-                    "agent_id": agent["id"]
-                })
-            
-            elif agent_type == "performance_expert":
-                updates.append({
-                    "file": "performance_patterns.md",
-                    "action": "update", 
-                    "content": f"Performance analysis for: {', '.join(context.code_changes)}",
-                    "agent_id": agent["id"]
-                })
-        
-        # Always update main documentation
-        updates.append({
-            "file": "dialectic_analysis.md",
-            "action": "create",
-            "content": f"Analysis of {context.focus_area} focus for changes: {', '.join(context.code_changes)}",
-            "agent_id": "workflow_manager"
-        })
-        
-        return updates
-    
-    async def _generate_learning_events(self, context: AgentContext, 
-                                     agents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Generate learning events for pattern recognition"""
-        events = []
-        
-        # Pattern recognition event
-        events.append({
-            "event_type": "pattern_recognized",
-            "pattern": context.focus_area,
-            "confidence": 0.85,
-            "context": {
-                "code_changes": context.code_changes,
-                "agent_count": len(agents),
-                "urgency": context.urgency
-            },
-            "timestamp": time.time()
-        })
-        
-        # Agent generation event
-        events.append({
-            "event_type": "agents_generated",
-            "agent_types": [agent["type"] for agent in agents],
-            "context": context.focus_area,
-            "timestamp": time.time()
-        })
-        
-        return events
+    # OLD HARDCODED METHODS REMOVED - NOW USING AI!
     
     async def get_workflow_status(self, context_id: str) -> Optional[Dict[str, Any]]:
         """Get status of an active workflow"""
@@ -353,31 +273,76 @@ class WorkflowManager:
         
         logger.info(f"Cleaned up {len(completed_contexts)} completed workflows")
 
-# Test function
+# Test function - AI-POWERED!
 async def test_workflow_manager():
-    """Test the workflow manager functionality"""
+    """Test the AI-powered workflow manager functionality"""
     from streams.message_handler import MessageHandler
     
-    # Initialize components
+    print("🌌 TESTING AI-POWERED WORKFLOW MANAGER")
+    print("=" * 70)
+    
+    # Initialize components with AI enabled
     stackai_client = StackAIClient()
     message_handler = MessageHandler()
-    workflow_manager = WorkflowManager(stackai_client, message_handler)
+    workflow_manager = WorkflowManager(stackai_client, message_handler, use_ai=True)
     
-    # Test context
+    print("\n✅ Initialized with AI-powered agent generation")
+    
+    # Test context - security focus
     context = AgentContext(
-        code_changes=["auth.py", "security.py", "middleware.py"],
-        file_context={"auth.py": "authentication logic", "security.py": "security utilities"},
+        code_changes=[
+            "src/auth/jwt_handler.py", 
+            "src/middleware/auth_middleware.py",
+            "src/models/user.py"
+        ],
+        file_context={
+            "src/auth/jwt_handler.py": "JWT token generation and validation",
+            "src/middleware/auth_middleware.py": "Authentication middleware for API routes",
+            "src/models/user.py": "User model with password hashing"
+        },
         focus_area="security",
-        urgency="high"
+        urgency="high",
+        metadata={
+            "errors": [
+                {"type": "AuthenticationError", "count": 2},
+                {"type": "ValidationError", "count": 1}
+            ]
+        }
     )
     
-    # Test agent coordination
+    print(f"\n🎭 Test Context:")
+    print(f"   Focus: {context.focus_area}")
+    print(f"   Urgency: {context.urgency}")
+    print(f"   Files: {', '.join(context.code_changes)}")
+    
+    # Test AI agent coordination
+    print(f"\n🤖 Running AI-powered agent coordination...")
     result = await workflow_manager.coordinate_agents(context)
-    print(f"Coordination result: {result}")
+    
+    print(f"\n📊 Coordination Results:")
+    print(f"   Success: {result.success}")
+    print(f"   Workflow ID: {result.workflow_id}")
+    print(f"   Agents Generated: {len(result.agents_generated)}")
+    print(f"   Documentation Updates: {len(result.documentation_updates)}")
+    print(f"   Learning Events: {len(result.learning_events)}")
+    
+    if result.agents_generated:
+        print(f"\n🤖 AI-Generated Agents:")
+        for agent in result.agents_generated:
+            print(f"   • {agent['type']}: {agent['description']}")
+            print(f"     Confidence: {agent['context'].get('confidence', 'N/A')}")
+            print(f"     LLM Generated: {agent.get('llm_generated', False)}")
+    
+    if result.documentation_updates:
+        print(f"\n📚 AI-Generated Documentation Updates:")
+        for update in result.documentation_updates[:3]:  # Show first 3
+            print(f"   • {update.get('file', 'Unknown')}: {update.get('size', 0)} bytes")
     
     # Test active workflows
     active = workflow_manager.get_active_workflows()
-    print(f"Active workflows: {active}")
+    print(f"\n📁 Active Workflows: {len(active)}")
+    
+    print(f"\n🎉 AI-Powered Workflow Manager Test Complete!")
 
 if __name__ == "__main__":
     import asyncio

@@ -7,10 +7,16 @@ documentation system in real-time!
 """
 
 import os
+import sys
 from pathlib import Path
 from typing import List, Dict
 from datetime import datetime
 import json
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from config.llm_config import get_llm
 
 
 class DocumentationUpdater:
@@ -36,7 +42,7 @@ class DocumentationUpdater:
         # Ensure .cursor folder exists
         self.cursor_path.mkdir(parents=True, exist_ok=True)
     
-    async def update_documentation(self, agent_spec, context: Dict) -> List[Dict]:
+    async def update_documentation(self, agent_spec, context: Dict):
         """
         Update documentation files based on agent spec and context
         
@@ -45,10 +51,11 @@ class DocumentationUpdater:
             context: Context analysis from ContextAnalyzer
         
         Returns:
-            List of update records
+            Tuple of (List of update records with actual content, Generated content data)
         """
         
         updates_made = []
+        generated_content = {}
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         print(f"📚 {agent_spec.agent_type} updating documentation...")
@@ -68,6 +75,9 @@ class DocumentationUpdater:
                     timestamp
                 )
                 
+                # Store generated content
+                generated_content[target_file] = update_content
+                
                 # Update file
                 if file_path.exists():
                     await self._append_to_file(file_path, update_content)
@@ -76,13 +86,14 @@ class DocumentationUpdater:
                     await self._create_file(file_path, update_content)
                     update_type = "created"
                 
-                # Record update
+                # Record update WITH ACTUAL CONTENT
                 update_record = {
                     'file': str(file_path),
                     'type': update_type,
                     'timestamp': timestamp,
                     'agent': agent_spec.agent_type,
-                    'size': len(update_content)
+                    'size': len(update_content),
+                    'content': update_content  # Include actual generated content!
                 }
                 
                 updates_made.append(update_record)
@@ -94,7 +105,14 @@ class DocumentationUpdater:
                 print(f"   ❌ Failed to update {target_file}: {e}")
                 continue
         
-        return updates_made
+        content_data = {
+            'agent_type': agent_spec.agent_type,
+            'generated_content': generated_content,
+            'total_files': len(generated_content),
+            'total_size': sum(len(content) for content in generated_content.values())
+        }
+        
+        return updates_made, content_data
     
     async def _generate_update_content(
         self, 
@@ -126,6 +144,32 @@ class DocumentationUpdater:
         else:
             return self._generate_general_update(context, timestamp, files_changed, commit_message)
     
+    def _generate_fallback_content(self, agent_spec, context: Dict, timestamp: str, files: str, message: str) -> str:
+        """Fallback content generation when LLM fails"""
+        
+        return f"""
+
+## {agent_spec.agent_type.replace('_', ' ').title()} Update - {timestamp}
+
+**Agent**: {agent_spec.agent_type.replace('_', ' ').title()}  
+**Files Modified**: {files}  
+**Context**: {message}  
+**Confidence**: {agent_spec.confidence:.1%}
+
+### Focus Area: {agent_spec.focus_area.title()}
+- Agent priority: {agent_spec.priority}
+- Estimated duration: {agent_spec.estimated_duration}
+- Tags: {', '.join(agent_spec.tags)}
+
+### Action Items
+- [ ] Review modified files: {files}
+- [ ] Update related documentation
+- [ ] Test changes thoroughly
+- [ ] Update team on modifications
+
+---
+"""
+
     def _generate_security_update(self, context: Dict, timestamp: str, files: str, message: str) -> str:
         """Generate security-focused documentation"""
         

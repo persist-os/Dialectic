@@ -132,7 +132,7 @@ class DynamicAgentGenerator:
             }
         }
     
-    async def generate_agents(self, context_analysis: Dict) -> List[AgentSpec]:
+    async def generate_agents(self, context_analysis: Dict):
         """
         Generate agents based on context analysis
         
@@ -140,11 +140,16 @@ class DynamicAgentGenerator:
             context_analysis: Output from ContextAnalyzer
         
         Returns:
-            List of AgentSpec objects for agents to spawn
+            Tuple of (List of AgentSpec objects, Dict with generation data)
         """
         
         agents = []
         timestamp = datetime.now().isoformat()
+        
+        # Build simulated LLM-like reasoning
+        files_changed = context_analysis.get('files_changed', [])
+        commit_message = context_analysis.get('commit_message', '')
+        reasoning_parts = []
         
         # Security agent - high priority
         if context_analysis['security_focus']:
@@ -220,7 +225,37 @@ class DynamicAgentGenerator:
         # Sort by priority and confidence
         agents.sort(key=lambda x: (x.priority, -x.confidence))
         
-        return agents
+        # Build LLM-like response data for demo purposes
+        llm_data = {
+            "prompt": f"""Analyze these code changes and determine what specialist agents are needed:
+
+**Files Changed:**
+{chr(10).join(f'- {f}' for f in files_changed)}
+
+**Commit Message:**
+{commit_message}
+
+**Context:**
+- Security focus: {context_analysis.get('security_focus', False)}
+- MVP focus: {context_analysis.get('mvp_focus', False)}
+- Performance focus: {context_analysis.get('performance_focus', False)}
+- Complexity score: {context_analysis.get('complexity_score', 0)}
+- Error count: {context_analysis.get('error_count', 0)}""",
+            
+            "system_prompt": "Template-based agent generation system analyzing code changes to spawn specialized documentation agents.",
+            
+            "llm_response": f"""{{
+  "agents": [
+    {chr(10).join('    ' + f'{{"agent_type": "{a.agent_type}", "confidence": {a.confidence}, "reason": "{a.context_reason}"}}' + (',' if i < len(agents)-1 else '') for i, a in enumerate(agents))}
+  ],
+  "reasoning": "Analyzed file patterns, commit message, and context to determine required specialist agents based on predefined templates and confidence thresholds."
+}}""",
+            
+            "agents_generated": len(agents),
+            "method": "template_based"
+        }
+        
+        return agents, llm_data
     
     def _create_agent(self, agent_type: str, context: Dict, timestamp: str, reason: str) -> AgentSpec:
         """Create an agent specification from template and context"""
