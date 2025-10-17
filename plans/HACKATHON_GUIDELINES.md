@@ -46,8 +46,6 @@ we could also throw in fun roleplay esque scenarios like senior engineer reviewi
 
 ALL OF THESE COMPANIES DO THE EXACT SAME THING
 
-i dont want use apify because they are just money sucking convenience to get you through the door and locked in. 
-
 senso using context os to transform raw context into self improving ai agents. inject structured of unconstructed content. configure agent prompts and templates to guide behavior. convert that data into executable context for downstreak tasks. 
 
 according to them, imprvoing the context window is how to make self improving agents. 
