@@ -90,9 +90,9 @@ class DynamicAgentGenerator:
                 'focus_area': 'documentation',
                 'documentation_targets': [
                     '.cursor/README.md',
-                    '.cursor/development/debugging/',
-                    '.cursor/plans/',
-                    '.cursor/commands/'
+                    '.cursor/development/documentation_updates.md',
+                    '.cursor/plans/documentation_plan.md',
+                    '.cursor/commands/documentation_commands.md'
                 ],
                 'tags': ['documentation', 'docs', 'guides'],
                 'estimated_duration': '5-15 min'
@@ -101,7 +101,7 @@ class DynamicAgentGenerator:
                 'base_priority': 1,
                 'focus_area': 'debugging',
                 'documentation_targets': [
-                    '.cursor/development/debugging/',
+                    '.cursor/development/debugging/error_log.md',
                     '.cursor/commands/debugging_commands.md',
                     '.cursor/rules/error_handling_rules.md'
                 ],
