@@ -1,0 +1,22 @@
+# Dialectic - Dynamic Agent System
+# Python 3.10+
+
+# Sentry SDK - Error monitoring and tracking
+sentry-sdk>=2.0.0
+
+# MCP Integration (for Sentry MCP Server, Senso connections)
+mcp>=1.0.0
+
+# Async support (built-in but listing for clarity)
+# asyncio - built-in
+
+# Data handling
+dataclasses-json>=0.6.0
+
+# For future phases (commented out until needed)
+# redpanda-py>=0.1.0  # Redpanda streaming
+# stackai>=0.1.0  # StackAI orchestration
+
+# Development/Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
