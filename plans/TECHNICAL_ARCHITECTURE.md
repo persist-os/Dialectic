@@ -1,74 +1,107 @@
-# 🏗️ Dialectic Framework: Technical Architecture
+# 🏗️ Dialectic: Technical Architecture - Self-Learning Cursor Community
 
 ## 🎯 System Overview
 
-**Dialectic** is a universal framework for multi-agent reasoning that enables AI agents to debate complex questions from multiple perspectives and reach consensus through structured democratic processes.
+**Dialectic** is an autonomous community of AI agents that continuously learns from your codebase and maintains your `.cursor` folder without human intervention.
 
 ## 🏛️ Core Architecture
 
-### **Framework Components**
+### **System Components**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    DIALECTIC FRAMEWORK                      │
+│                    DIALECTIC ECOSYSTEM                       │
 ├─────────────────────────────────────────────────────────────┤
-│  Template Engine  │  Custom Builder  │  Debate Orchestrator │
+│  Event Detection  │  Dynamic Agent  │  Documentation        │
+│  (Sentry MCP)     │  Generation     │  Maintenance         │
 ├─────────────────────────────────────────────────────────────┤
-│     Airia        │     Redpanda      │     StackAI         │
-│  (Knowledge)     │   (Streams)       │  (Orchestration)    │
+│     Redpanda      │     StackAI     │     Your .cursor      │
+│   (A2A Streams)   │  (Orchestration)│     Folder           │
 ├─────────────────────────────────────────────────────────────┤
-│     OpenAI       │    TrueFoundry    │     Senso.ai       │
-│   (Agents)       │   (Deployment)    │    (Memory)        │
+│  Real-time Events │  Agent Learning │  Self-Improving      │
+│  Code Changes     │  Pattern Recognition │  Knowledge Base  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 🧠 Agent Personality System
+## 🧠 Dynamic Agent Generation System
 
-### **Dynamic Agent Generation System**
+### **Event-Driven Agent Creation**
 
 ```python
-class QuestionAnalyzer:
-    """Analyzes questions to identify relevant dimensions and generate agents"""
+class DynamicAgentGenerator:
+    """Generates agents based on codebase context and development events"""
     
-    def __init__(self, openai_client, airia_client):
-        self.openai = openai_client
-        self.airia = airia_client
+    def __init__(self, sentry_client, redpanda_client):
+        self.sentry = sentry_client
+        self.redpanda = redpanda_client
+        self.learning_engine = LearningEngine()
     
-    async def analyze_question(self, question: str) -> QuestionAnalysis:
-        """Analyze question to identify key dimensions and perspectives needed"""
+    async def analyze_codebase_context(self, event_data):
+        """Analyze codebase context to determine needed agents"""
         
-        # Use OpenAI to analyze question structure
-        analysis_prompt = f"""
-        Analyze this question to identify the key dimensions and perspectives needed for comprehensive debate:
+        context = {
+            'files_changed': event_data.get('files', []),
+            'commit_message': event_data.get('message', ''),
+            'error_patterns': await self.sentry.get_error_patterns(),
+            'development_focus': await self.detect_development_focus(event_data)
+        }
         
-        Question: "{question}"
+        return context
+    
+    async def generate_contextual_agents(self, context):
+        """Generate agents based on actual codebase needs"""
         
-        Identify:
-        1. Key decision factors (financial, technical, ethical, personal, etc.)
-        2. Stakeholder groups affected
-        3. Time horizons (short-term vs long-term)
-        4. Risk categories
-        5. Success criteria
+        agents = []
         
-        Return structured analysis in JSON format.
-        """
+        # Security focus detection
+        if self.needs_security_focus(context):
+            agents.append(await self.create_security_agent(context))
         
-        analysis_response = await self.openai.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": analysis_prompt}]
-        )
+        # MVP focus detection
+        if self.needs_mvp_focus(context):
+            agents.append(await self.create_mvp_agent(context))
         
-        # Parse analysis and generate agent specifications
-        analysis_data = json.loads(analysis_response.choices[0].message.content)
+        # Performance focus detection
+        if self.needs_performance_focus(context):
+            agents.append(await self.create_performance_agent(context))
         
-        return QuestionAnalysis(
-            question=question,
-            dimensions=analysis_data["dimensions"],
-            stakeholders=analysis_data["stakeholders"],
-            time_horizons=analysis_data["time_horizons"],
-            risk_categories=analysis_data["risk_categories"],
-            success_criteria=analysis_data["success_criteria"]
-        )
+        # Documentation focus detection
+        if self.needs_documentation_focus(context):
+            agents.append(await self.create_documentation_agent(context))
+        
+        return agents
+    
+    def needs_security_focus(self, context):
+        """Detect if codebase needs security focus"""
+        security_keywords = ['auth', 'password', 'token', 'security', 'encrypt', 'permission']
+        files_changed = context.get('files_changed', [])
+        commit_message = context.get('commit_message', '').lower()
+        
+        return (any(keyword in str(files_changed).lower() for keyword in security_keywords) or
+                any(keyword in commit_message for keyword in security_keywords))
+    
+    def needs_mvp_focus(self, context):
+        """Detect if codebase needs MVP focus"""
+        mvp_keywords = ['prototype', 'mvp', 'quick', 'rapid', 'hackathon', 'demo']
+        commit_message = context.get('commit_message', '').lower()
+        
+        return any(keyword in commit_message for keyword in mvp_keywords)
+    
+    def needs_performance_focus(self, context):
+        """Detect if codebase needs performance focus"""
+        performance_keywords = ['optimize', 'performance', 'speed', 'cache', 'async']
+        files_changed = context.get('files_changed', [])
+        commit_message = context.get('commit_message', '').lower()
+        
+        return (any(keyword in str(files_changed).lower() for keyword in performance_keywords) or
+                any(keyword in commit_message for keyword in performance_keywords))
+    
+    def needs_documentation_focus(self, context):
+        """Detect if codebase needs documentation focus"""
+        doc_keywords = ['readme', 'docs', 'documentation', 'guide', 'tutorial']
+        files_changed = context.get('files_changed', [])
+        
+        return any(keyword in str(files_changed).lower() for keyword in doc_keywords)
 
 class DynamicAgentGenerator:
     """Generates specialized agents based on question analysis"""

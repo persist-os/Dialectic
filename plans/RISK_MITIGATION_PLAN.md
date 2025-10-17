@@ -1,8 +1,8 @@
-# 🛡️ Risk Mitigation Plan: Dialectic Framework
+# 🛡️ Risk Mitigation Plan: Dialectic - Self-Learning Cursor Community
 
 ## 🎯 Risk Assessment Overview
 
-**Objective**: Ensure we have a functional demo regardless of technical failures, time constraints, or integration issues.
+**Objective**: Ensure we have a functional demo of autonomous documentation maintenance regardless of technical failures, time constraints, or integration issues.
 
 ## 🚨 Critical Risk Categories
 
@@ -20,485 +20,469 @@ class APIFallbackManager:
     
     def __init__(self):
         self.fallbacks = {
-            "airia": MockKnowledgeBase(),
+            "sentry": MockEventDetector(),
             "redpanda": LocalMessageQueue(),
             "stackai": SimpleWorkflowEngine(),
-            "openai": CachedResponses(),
-            "senso": LocalMemoryStore()
+            "openai": CachedResponses()
         }
     
-    async def get_knowledge_with_fallback(self, query: str):
-        """Try Airia, fallback to mock knowledge"""
+    async def detect_events_with_fallback(self, project_id: str):
+        """Detect events with Sentry fallback"""
         try:
-            return await self.airia_client.query(query)
+            return await self.sentry_client.detect_events(project_id)
+        except Exception:
+            return await self.fallbacks["sentry"].detect_events(project_id)
+    
+    async def stream_messages_with_fallback(self, topic: str, message: dict):
+        """Stream messages with Redpanda fallback"""
+        try:
+            return await self.redpanda_client.produce(topic, message)
+        except Exception:
+            return await self.fallbacks["redpanda"].produce(topic, message)
+```
+
+**B. Mock Data System**
+```python
+class MockDataGenerator:
+    """Generates realistic mock data for demo purposes"""
+    
+    def generate_mock_code_changes(self) -> List[CodeChangeEvent]:
+        """Generate mock code changes for demo"""
+        return [
+            CodeChangeEvent(
+                file_path="src/auth/login.py",
+                change_type="security_update",
+                timestamp=time.time(),
+                commit_message="Add authentication security measures"
+            ),
+            CodeChangeEvent(
+                file_path="src/api/endpoints.py",
+                change_type="mvp_feature",
+                timestamp=time.time(),
+                commit_message="Add MVP prototype endpoints"
+            )
+        ]
+    
+    def generate_mock_agents(self, context: Context) -> List[Agent]:
+        """Generate mock agents based on context"""
+        agents = []
+        
+        if context.needs_security_focus:
+            agents.append(SecurityAgent(
+                id="security_001",
+                expertise=["authentication", "authorization", "security"],
+                generated_prompt="Focus on security implications of code changes"
+            ))
+        
+        if context.needs_mvp_focus:
+            agents.append(MVPAgent(
+                id="mvp_001", 
+                expertise=["rapid_prototyping", "essential_features", "mvp"],
+                generated_prompt="Focus on getting features working quickly"
+            ))
+        
+        return agents
+```
+
+### **2. Agent Generation Failures** (HIGH RISK)
+**Risk**: Dynamic agent generation doesn't work, agents are malformed
+**Impact**: Core value proposition fails, demo becomes static
+**Probability**: Medium (complex logic, time pressure)
+
+#### Mitigation Strategies:
+
+**A. Predefined Agent Templates**
+```python
+class AgentTemplateFallback:
+    """Fallback to predefined agent templates if dynamic generation fails"""
+    
+    def __init__(self):
+        self.templates = {
+            "security": SecurityAgentTemplate(),
+            "mvp": MVPAgentTemplate(),
+            "performance": PerformanceAgentTemplate(),
+            "documentation": DocumentationAgentTemplate()
+        }
+    
+    def get_agent_for_context(self, context: Context) -> Agent:
+        """Get appropriate agent template for context"""
+        
+        if context.needs_security_focus:
+            return self.templates["security"].create_agent(context)
+        elif context.needs_mvp_focus:
+            return self.templates["mvp"].create_agent(context)
+        elif context.needs_performance_focus:
+            return self.templates["performance"].create_agent(context)
+        else:
+            return self.templates["documentation"].create_agent(context)
+```
+
+**B. Rule-Based Agent Selection**
+```python
+class RuleBasedAgentSelector:
+    """Select agents based on simple rules if AI generation fails"""
+    
+    def select_agents(self, context: Context) -> List[Agent]:
+        """Select agents based on context rules"""
+        agents = []
+        
+        # Simple keyword-based selection
+        if any(keyword in context.commit_message.lower() 
+               for keyword in ['auth', 'security', 'password', 'token']):
+            agents.append(self.create_security_agent())
+        
+        if any(keyword in context.commit_message.lower() 
+               for keyword in ['mvp', 'prototype', 'quick', 'demo']):
+            agents.append(self.create_mvp_agent())
+        
+        if any(keyword in context.commit_message.lower() 
+               for keyword in ['optimize', 'performance', 'speed']):
+            agents.append(self.create_performance_agent())
+        
+        # Default to documentation agent if no specific focus
+        if not agents:
+            agents.append(self.create_documentation_agent())
+        
+        return agents
+```
+
+### **3. Documentation Update Failures** (MEDIUM RISK)
+**Risk**: Documentation updates fail, file permissions issues, content generation errors
+**Impact**: Core functionality doesn't work, demo shows no results
+**Probability**: Medium (file system access, content generation)
+
+#### Mitigation Strategies:
+
+**A. Safe Documentation Updates**
+```python
+class SafeDocumentationUpdater:
+    """Safely update documentation with rollback capability"""
+    
+    def __init__(self):
+        self.backup_dir = "backups/documentation"
+        self.max_retries = 3
+    
+    async def update_documentation(self, file_path: str, content: str) -> bool:
+        """Update documentation with safety checks"""
+        
+        # Create backup
+        backup_path = await self.create_backup(file_path)
+        
+        try:
+            # Write to temporary file first
+            temp_path = f"{file_path}.tmp"
+            with open(temp_path, 'w') as f:
+                f.write(content)
+            
+            # Validate content
+            if self.validate_content(content):
+                # Move temp file to final location
+                os.rename(temp_path, file_path)
+                return True
+            else:
+                # Remove temp file if validation fails
+                os.remove(temp_path)
+                return False
+                
         except Exception as e:
-            logger.warning(f"Airia failed: {e}, using fallback")
-            return await self.fallbacks["airia"].query(query)
+            # Restore from backup
+            await self.restore_from_backup(file_path, backup_path)
+            return False
+    
+    def validate_content(self, content: str) -> bool:
+        """Validate documentation content"""
+        # Basic validation checks
+        if len(content) < 10:  # Too short
+            return False
+        if content.count('\n') < 2:  # Not enough structure
+            return False
+        if 'ERROR' in content.upper():  # Contains error indicators
+            return False
+        
+        return True
 ```
 
-**B. Pre-cached Responses**
+**B. Mock Documentation Updates**
 ```python
-# Pre-generate responses for demo scenarios
-DEMO_RESPONSES = {
-    "career_decision": {
-        "financial_agent": "Based on current market data, a 20% pay cut represents significant risk...",
-        "growth_agent": "Startup opportunities offer 3x faster skill development...",
-        "risk_agent": "Your financial runway is the critical factor here...",
-        "life_agent": "Consider your values alignment and long-term happiness..."
-    },
-    "mars_colonization": {
-        "scientist": "Technical feasibility exists but requires massive resource investment...",
-        "philosopher": "Ethical questions about terraforming and life creation...",
-        "economist": "Cost-benefit analysis suggests Earth-based solutions...",
-        "futurist": "Essential for long-term species survival and expansion..."
-    }
-}
-```
-
-**C. Local Development Mode**
-```python
-class LocalDevelopmentMode:
-    """Complete local implementation for demo reliability"""
+class MockDocumentationUpdater:
+    """Mock documentation updates for demo purposes"""
     
     def __init__(self):
-        self.local_agents = {}
-        self.local_knowledge = {}
-        self.local_streams = {}
+        self.mock_updates = []
     
-    async def run_demo_locally(self, scenario: str):
-        """Run complete demo without external dependencies"""
+    async def simulate_documentation_update(self, agent: Agent, context: Context):
+        """Simulate documentation update for demo"""
         
-        # Use pre-cached responses
-        responses = DEMO_RESPONSES[scenario]
+        update = DocumentationUpdate(
+            file_path=f"docs/{agent.expertise}_guide.md",
+            update_type="agent_generated",
+            content=f"# {agent.expertise.title()} Guide\n\nUpdated by {agent.id} based on {context.commit_message}",
+            agent_id=agent.id,
+            timestamp=time.time()
+        )
         
-        # Simulate real-time streaming
-        for agent, response in responses.items():
-            await self.simulate_streaming(agent, response)
+        self.mock_updates.append(update)
         
-        return self.generate_demo_results(scenario)
+        # Stream update for demo
+        await self.stream_update(update)
+        
+        return update
 ```
 
-### **2. Time Constraints** (HIGH RISK)
-**Risk**: Not enough time to build core features
-**Impact**: Demo fails or is incomplete
-**Probability**: High (hackathon time pressure)
+### **4. Real-Time Communication Failures** (MEDIUM RISK)
+**Risk**: Redpanda streams fail, WebSocket connections drop, message loss
+**Impact**: A2A communication breaks, demo becomes static
+**Probability**: Medium (network issues, streaming complexity)
 
 #### Mitigation Strategies:
 
-**A. Phased Development with Checkpoints**
+**A. WebSocket Fallback**
 ```python
-PHASE_CHECKPOINTS = {
-    "phase_1": {
-        "duration": "2 hours",
-        "goal": "Basic template system working",
-        "fallback": "Static demo with pre-recorded responses",
-        "success_criteria": "Can select template and show agent responses"
-    },
-    "phase_2": {
-        "duration": "2 hours", 
-        "goal": "Custom agent builder working",
-        "fallback": "Pre-defined custom agents",
-        "success_criteria": "Can create custom agents and run debate"
-    },
-    "phase_3": {
-        "duration": "1.5 hours",
-        "goal": "Real-time streaming and voting",
-        "fallback": "Simulated real-time with delays",
-        "success_criteria": "Complete debate flow with consensus"
-    }
-}
-```
-
-**B. Feature Prioritization Matrix**
-```python
-FEATURE_PRIORITY = {
-    "CRITICAL": [
-        "Template selection UI",
-        "Basic agent responses", 
-        "Simple voting mechanism",
-        "Consensus display"
-    ],
-    "IMPORTANT": [
-        "Custom agent builder",
-        "Real-time streaming",
-        "Knowledge integration",
-        "Performance monitoring"
-    ],
-    "NICE_TO_HAVE": [
-        "Advanced voting algorithms",
-        "Agent learning",
-        "Complex orchestration",
-        "Advanced analytics"
-    ]
-}
-```
-
-**C. Parallel Development Strategy**
-```python
-TEAM_PARALLEL_WORK = {
-    "person_1": {
-        "primary": "Backend framework and templates",
-        "secondary": "API integrations",
-        "backup": "Static demo data"
-    },
-    "person_2": {
-        "primary": "Frontend UI and templates", 
-        "secondary": "Real-time visualization",
-        "backup": "Static UI with mock data"
-    }
-}
-```
-
-### **3. Technical Complexity** (MEDIUM RISK)
-**Risk**: Integration complexity causes delays
-**Impact**: Features don't work together
-**Probability**: Medium (multiple new technologies)
-
-#### Mitigation Strategies:
-
-**A. Integration-First Development**
-```python
-class IntegrationFirstApproach:
-    """Build integrations first, features second"""
-    
-    async def test_integration_early(self):
-        """Test all integrations within first hour"""
-        
-        integration_tests = {
-            "airia": await self.test_airia_connection(),
-            "redpanda": await self.test_redpanda_streaming(),
-            "stackai": await self.test_stackai_workflow(),
-            "openai": await self.test_openai_agents(),
-            "senso": await self.test_senso_memory()
-        }
-        
-        failed_integrations = [k for k, v in integration_tests.items() if not v]
-        
-        if failed_integrations:
-            await self.activate_fallback_mode(failed_integrations)
-        
-        return integration_tests
-```
-
-**B. Mock-First Development**
-```python
-class MockFirstDevelopment:
-    """Build with mocks, replace with real APIs later"""
+class CommunicationFallback:
+    """Fallback communication system if Redpanda fails"""
     
     def __init__(self):
-        self.mocks = {
-            "airia": MockAiriaClient(),
-            "redpanda": MockRedpandaClient(), 
-            "stackai": MockStackAIClient(),
-            "openai": MockOpenAIClient(),
-            "senso": MockSensoClient()
-        }
+        self.websocket_server = None
+        self.message_queue = asyncio.Queue()
     
-    async def build_with_mocks(self):
-        """Build complete system with mock clients"""
+    async def setup_websocket_fallback(self):
+        """Setup WebSocket server as Redpanda fallback"""
         
-        # All functionality works with mocks
-        demo = await self.create_demo_with_mocks()
+        async def websocket_handler(websocket, path):
+            async for message in websocket:
+                # Process incoming messages
+                data = json.loads(message)
+                await self.message_queue.put(data)
         
-        # Gradually replace with real APIs
-        for api_name, mock_client in self.mocks.items():
-            try:
-                real_client = await self.create_real_client(api_name)
-                await demo.replace_client(api_name, real_client)
-            except Exception:
-                logger.warning(f"Keeping mock for {api_name}")
-                continue
+        self.websocket_server = await websockets.serve(
+            websocket_handler, "localhost", 8765
+        )
+    
+    async def send_message_fallback(self, topic: str, message: dict):
+        """Send message via WebSocket if Redpanda fails"""
+        try:
+            # Try Redpanda first
+            await self.redpanda_client.produce(topic, message)
+        except Exception:
+            # Fallback to WebSocket
+            await self.websocket_server.send(json.dumps({
+                'topic': topic,
+                'message': message
+            }))
 ```
 
-### **4. Demo Failure** (MEDIUM RISK)
-**Risk**: Live demo fails during presentation
-**Impact**: Lose judging opportunity
-**Probability**: Medium (live demos are risky)
+**B. Local Message Queue**
+```python
+class LocalMessageQueue:
+    """Local message queue for demo purposes"""
+    
+    def __init__(self):
+        self.queues = {}
+        self.subscribers = {}
+    
+    async def create_topic(self, topic: str):
+        """Create local topic"""
+        self.queues[topic] = asyncio.Queue()
+        self.subscribers[topic] = []
+    
+    async def produce(self, topic: str, message: dict):
+        """Produce message to local queue"""
+        if topic in self.queues:
+            await self.queues[topic].put(message)
+            
+            # Notify subscribers
+            for subscriber in self.subscribers[topic]:
+                await subscriber(message)
+    
+    async def consume(self, topic: str, callback):
+        """Consume messages from local queue"""
+        self.subscribers[topic].append(callback)
+        
+        while True:
+            message = await self.queues[topic].get()
+            await callback(message)
+```
+
+### **5. Time Management Failures** (HIGH RISK)
+**Risk**: Feature creep, integration takes too long, demo preparation rushed
+**Impact**: Incomplete demo, poor presentation, missed submission
+**Probability**: High (ambitious scope, time pressure)
 
 #### Mitigation Strategies:
 
-**A. Multiple Demo Formats**
+**A. Phase-Based Development**
 ```python
-DEMO_FORMATS = {
-    "live_demo": {
-        "primary": True,
-        "preparation": "Full system testing",
-        "backup": "Pre-recorded video"
-    },
-    "pre_recorded": {
-        "backup": True,
-        "content": "Perfect demo flow",
-        "advantages": "No technical failures"
-    },
-    "static_screenshots": {
-        "emergency": True,
-        "content": "UI mockups with voiceover",
-        "advantages": "Always works"
-    },
-    "code_walkthrough": {
-        "last_resort": True,
-        "content": "Show architecture and key code",
-        "advantages": "Demonstrates technical depth"
-    }
-}
-```
-
-**B. Demo Environment Setup**
-```python
-class DemoEnvironmentManager:
-    """Ensures demo environment is bulletproof"""
+class PhaseManager:
+    """Manages development phases with clear checkpoints"""
     
-    async def setup_demo_environment(self):
-        """Set up isolated demo environment"""
-        
-        # Use Docker for consistent environment
-        demo_container = await self.create_demo_container()
-        
-        # Pre-seed with demo data
-        await self.seed_demo_data(demo_container)
-        
-        # Test all scenarios
-        await self.test_all_demo_scenarios(demo_container)
-        
-        # Create backup snapshots
-        await self.create_backup_snapshots(demo_container)
-        
-        return demo_container
+    def __init__(self):
+        self.phases = {
+            "phase_1": {
+                "duration": 2.0,  # hours
+                "goal": "MVP with basic agent generation",
+                "success_criteria": ["MCP server working", "Basic agents generated", "Simple demo working"]
+            },
+            "phase_2": {
+                "duration": 1.5,  # hours
+                "goal": "Enhanced features and real-time communication",
+                "success_criteria": ["Redpanda streams working", "Documentation updates", "Dashboard functional"]
+            },
+            "phase_3": {
+                "duration": 1.0,  # hours
+                "goal": "Polish and demo preparation",
+                "success_criteria": ["Demo scenarios tested", "Pitch rehearsed", "Submission ready"]
+            }
+        }
     
-    async def prepare_demo_scenarios(self):
-        """Prepare multiple demo scenarios"""
+    def check_phase_progress(self, phase: str) -> bool:
+        """Check if phase is on track"""
+        phase_info = self.phases[phase]
+        elapsed = self.get_elapsed_time(phase)
         
-        scenarios = {
-            "career_decision": await self.prepare_career_scenario(),
-            "mars_colonization": await self.prepare_mars_scenario(),
-            "technical_decision": await self.prepare_technical_scenario(),
-            "ethical_dilemma": await self.prepare_ethical_scenario()
+        if elapsed > phase_info["duration"]:
+            return False  # Phase is behind schedule
+        
+        return True
+    
+    def get_fallback_scope(self, phase: str) -> List[str]:
+        """Get fallback scope if phase is behind"""
+        fallbacks = {
+            "phase_1": ["Use mock data", "Skip complex features", "Focus on core demo"],
+            "phase_2": ["Use WebSocket fallback", "Skip advanced features", "Focus on basic functionality"],
+            "phase_3": ["Use backup recording", "Skip polish", "Focus on submission"]
         }
         
-        # Ensure all scenarios work
-        for name, scenario in scenarios.items():
-            await self.validate_scenario(name, scenario)
+        return fallbacks.get(phase, [])
+```
+
+**B. Demo-First Development**
+```python
+class DemoFirstDevelopment:
+    """Ensure demo works at every checkpoint"""
+    
+    def __init__(self):
+        self.demo_scenarios = [
+            "security_focus_demo",
+            "mvp_focus_demo", 
+            "performance_focus_demo"
+        ]
+        self.current_scenario = 0
+    
+    async def test_demo_scenario(self, scenario: str) -> bool:
+        """Test demo scenario to ensure it works"""
         
-        return scenarios
+        if scenario == "security_focus_demo":
+            return await self.test_security_demo()
+        elif scenario == "mvp_focus_demo":
+            return await self.test_mvp_demo()
+        elif scenario == "performance_focus_demo":
+            return await self.test_performance_demo()
+        
+        return False
+    
+    async def test_security_demo(self) -> bool:
+        """Test security focus demo scenario"""
+        try:
+            # Simulate security-focused code change
+            context = Context(
+                commit_message="Add authentication security measures",
+                files_changed=["src/auth/login.py"],
+                needs_security_focus=True
+            )
+            
+            # Generate security agent
+            agents = await self.generate_agents(context)
+            
+            # Check if security agent was generated
+            security_agent = next((a for a in agents if a.type == "security"), None)
+            
+            return security_agent is not None
+            
+        except Exception:
+            return False
 ```
 
-### **5. Team Coordination Issues** (LOW RISK)
-**Risk**: Team members work on conflicting features
-**Impact**: Integration problems, wasted time
-**Probability**: Low (small team, clear communication)
+## 🚨 Emergency Procedures
 
-#### Mitigation Strategies:
+### **If Core Integration Fails (Hour 2-3)**
+1. **Switch to Mock Data**: Use predefined scenarios and mock agents
+2. **Focus on Demo**: Ensure demo works even without real integrations
+3. **Simplify Architecture**: Remove complex features, focus on core value
 
-**A. Clear Ownership Boundaries**
-```python
-OWNERSHIP_MATRIX = {
-    "person_1": {
-        "owns": [
-            "backend/",
-            "api/",
-            "integrations/",
-            "database/"
-        ],
-        "touches": [
-            "shared/types/",
-            "integration_points/"
-        ],
-        "never_touches": [
-            "frontend/components/",
-            "frontend/styles/",
-            "frontend/routing/"
-        ]
-    },
-    "person_2": {
-        "owns": [
-            "frontend/",
-            "ui/",
-            "visualization/",
-            "demo/"
-        ],
-        "touches": [
-            "shared/types/",
-            "integration_points/"
-        ],
-        "never_touches": [
-            "backend/",
-            "api/",
-            "integrations/"
-        ]
-    }
-}
-```
+### **If Agent Generation Fails (Hour 3-4)**
+1. **Use Predefined Agents**: Switch to hardcoded agent templates
+2. **Rule-Based Selection**: Use simple keyword matching
+3. **Focus on Documentation**: Show documentation updates even with static agents
 
-**B. Integration Protocol**
-```python
-INTEGRATION_PROTOCOL = {
-    "checkpoint_1": {
-        "time": "2 hours in",
-        "person_1": "Push backend templates",
-        "person_2": "Pull and integrate",
-        "test": "Template selection works"
-    },
-    "checkpoint_2": {
-        "time": "4 hours in", 
-        "person_1": "Push API endpoints",
-        "person_2": "Push frontend integration",
-        "test": "Full debate flow works"
-    },
-    "checkpoint_3": {
-        "time": "5 hours in",
-        "both": "Final integration test",
-        "test": "Demo scenarios work"
-    }
-}
-```
+### **If Real-Time Communication Fails (Hour 4-5)**
+1. **WebSocket Fallback**: Use local WebSocket server
+2. **Local Message Queue**: Use in-memory message passing
+3. **Static Demo**: Show pre-recorded agent interactions
 
-## 🚀 Contingency Plans
+### **If Time Runs Out (Hour 5)**
+1. **Use Backup Recording**: Show pre-recorded demo
+2. **Focus on Submission**: Ensure Devpost submission is complete
+3. **Prepare Pitch**: Have 60-second pitch ready
 
-### **Plan A: Full System Working**
-- All integrations successful
-- Real-time streaming functional
-- Custom agent builder working
-- **Demo**: Live multi-agent debate with custom agents
+## 🎯 Success Criteria by Risk Level
 
-### **Plan B: Core Features Working**
-- Basic templates working
-- Mock integrations for failed APIs
-- Static demo data for missing features
-- **Demo**: Template-based debates with simulated real-time
+### **Minimum Viable (High Risk Tolerance)**
+- [ ] Basic MCP server detects mock events
+- [ ] Predefined agents generate documentation updates
+- [ ] Simple demo shows agent activity
+- [ ] At least 2 sponsors integrated
 
-### **Plan C: Minimal Viable Demo**
-- Static UI with pre-recorded responses
-- No real-time features
-- Focus on concept and vision
-- **Demo**: UI walkthrough with voiceover
+### **Strong Demo (Medium Risk Tolerance)**
+- [ ] Dynamic agent generation based on context
+- [ ] Real-time communication between agents
+- [ ] Live documentation updates
+- [ ] At least 3 sponsors integrated meaningfully
 
-### **Plan D: Emergency Fallback**
-- Screenshots and mockups
-- Architecture diagrams
-- Code walkthrough
-- **Demo**: "Here's what we built and how it works"
+### **Legendary Demo (Low Risk Tolerance)**
+- [ ] Fully autonomous system with learning
+- [ ] Context switching demonstration
+- [ ] Self-improving documentation
+- [ ] All sponsors integrated seamlessly
 
-## 🎯 Risk Monitoring
+## 🛡️ Risk Monitoring
 
-### **Hourly Risk Assessment**
+### **Continuous Risk Assessment**
 ```python
 class RiskMonitor:
-    """Monitors project risks in real-time"""
+    """Monitor risks throughout development"""
     
-    async def assess_risks_hourly(self):
-        """Check risk levels every hour"""
-        
-        risk_assessment = {
-            "time_remaining": self.calculate_time_remaining(),
-            "features_completed": self.count_completed_features(),
-            "integration_status": await self.check_integrations(),
-            "demo_readiness": self.assess_demo_readiness()
+    def __init__(self):
+        self.risk_indicators = {
+            "integration_failures": 0,
+            "agent_generation_failures": 0,
+            "documentation_update_failures": 0,
+            "communication_failures": 0,
+            "time_pressure": 0
         }
+    
+    def assess_risk_level(self) -> str:
+        """Assess overall risk level"""
+        total_failures = sum(self.risk_indicators.values())
         
-        # Trigger contingencies if needed
-        if risk_assessment["time_remaining"] < 2:
-            await self.activate_plan_b()
+        if total_failures >= 3:
+            return "HIGH"
+        elif total_failures >= 2:
+            return "MEDIUM"
+        else:
+            return "LOW"
+    
+    def recommend_action(self) -> str:
+        """Recommend action based on risk level"""
+        risk_level = self.assess_risk_level()
         
-        if risk_assessment["integration_status"]["failed"] > 2:
-            await self.activate_mock_mode()
-        
-        if risk_assessment["demo_readiness"] < 0.5:
-            await self.prepare_static_demo()
-        
-        return risk_assessment
+        if risk_level == "HIGH":
+            return "Activate emergency procedures, use fallbacks"
+        elif risk_level == "MEDIUM":
+            return "Monitor closely, prepare fallbacks"
+        else:
+            return "Continue with current plan"
 ```
-
-### **Early Warning System**
-```python
-EARLY_WARNING_TRIGGERS = {
-    "integration_failure": {
-        "threshold": 1,
-        "action": "activate_fallback_mode",
-        "message": "API integration failed, switching to mocks"
-    },
-    "time_crunch": {
-        "threshold": 2,  # hours remaining
-        "action": "simplify_scope",
-        "message": "Time running low, focusing on core features"
-    },
-    "demo_risk": {
-        "threshold": 0.3,  # demo readiness score
-        "action": "prepare_backup_demo",
-        "message": "Demo at risk, preparing backup options"
-    }
-}
-```
-
-## 🛠️ Recovery Procedures
-
-### **Integration Recovery**
-```python
-async def recover_from_integration_failure(api_name: str):
-    """Recover from specific API failure"""
-    
-    recovery_actions = {
-        "airia": lambda: activate_mock_knowledge_base(),
-        "redpanda": lambda: activate_local_message_queue(),
-        "stackai": lambda: activate_simple_workflow(),
-        "openai": lambda: activate_cached_responses(),
-        "senso": lambda: activate_local_memory()
-    }
-    
-    if api_name in recovery_actions:
-        await recovery_actions[api_name]()
-        logger.info(f"Recovered from {api_name} failure")
-    else:
-        logger.error(f"No recovery plan for {api_name}")
-```
-
-### **Time Recovery**
-```python
-async def recover_from_time_crunch():
-    """Recover when running out of time"""
-    
-    # Drop nice-to-have features
-    await self.drop_features(FEATURE_PRIORITY["NICE_TO_HAVE"])
-    
-    # Simplify important features
-    await self.simplify_features(FEATURE_PRIORITY["IMPORTANT"])
-    
-    # Focus on critical features only
-    await self.focus_on_critical(FEATURE_PRIORITY["CRITICAL"])
-    
-    # Prepare static demo as backup
-    await self.prepare_static_demo()
-```
-
-## 📊 Success Metrics by Risk Level
-
-### **Plan A Success Metrics**
-- [ ] All 6 sponsor integrations working
-- [ ] Real-time streaming functional
-- [ ] Custom agent builder complete
-- [ ] Live demo successful
-- [ ] Multiple sponsor prizes won
-
-### **Plan B Success Metrics**
-- [ ] Core templates working
-- [ ] Basic debate flow functional
-- [ ] 3+ sponsor integrations working
-- [ ] Demo successful (with some mocks)
-- [ ] At least 2 sponsor prizes won
-
-### **Plan C Success Metrics**
-- [ ] UI functional with mock data
-- [ ] Concept clearly demonstrated
-- [ ] 2+ sponsor integrations working
-- [ ] Demo successful (static)
-- [ ] At least 1 sponsor prize won
-
-### **Plan D Success Metrics**
-- [ ] Architecture clearly explained
-- [ ] Code quality demonstrated
-- [ ] Vision compellingly presented
-- [ ] Technical depth shown
-- [ ] Honorable mention possible
 
 ---
 
-This risk mitigation plan ensures we have a path to success regardless of what goes wrong. The key is having multiple fallback options and clear triggers for when to activate them.
+**This risk mitigation plan ensures we always have a working demo regardless of technical failures or time constraints.** 🛡️
