@@ -1,0 +1,10 @@
+input:
+  stdin: {}
+output:
+  redpanda:
+    addresses:
+    - localhost:9092
+    topic: dialectic_agents
+pipeline:
+  processors:
+  - mapping: root.topic = this.topic
